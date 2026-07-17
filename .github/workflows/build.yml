@@ -20,24 +20,30 @@ jobs:
           flutter-version: '3.19.x'
           channel: 'stable'
 
-      - name: Nuke and Rebuild Android Folder (Ultimate Fix)
+      - name: Nuke and Rebuild Android Folder (The Ultimate Tooling Upgrade)
         run: |
           rm -rf android
           flutter create . --platforms=android
           
-          # رفع إصدار الكوتلن ليتوافق مع المكاتب
+          # 1. ترقية أداة بناء أندرويد (AGP) إلى 8.1.0 لقراءة ملفات أندرويد 35 بنجاح
+          sed -i -E 's/id "com.android.application" version "[0-9\.]+"/id "com.android.application" version "8.1.0"/g' android/settings.gradle || true
+          
+          # 2. ترقية محرك الـ Gradle إلى 8.3 ليتوافق مع أداة البناء الجديدة ويحدث الـ AAPT2
+          sed -i 's/gradle-.*-all.zip/gradle-8.3-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
+          
+          # 3. تثبيت إصدار الكوتلن المتوافق 1.9.22
           sed -i -E 's/id "org.jetbrains.kotlin.android" version "[0-9\.]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/g' android/settings.gradle || true
           sed -i -E "s/ext.kotlin_version = '[^']*'/ext.kotlin_version = '1.9.22'/g" android/build.gradle || true
           
-          # إجبار التطبيق على استخدام إصدار SDK 35 (لحل مشكلة المكالمات) و 24 كحد أدنى
+          # 4. ضبط إعدادات الـ SDK لتتوافق مع مكتبة المكالمات
           sed -i -E 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle || true
           sed -i -E 's/minSdkVersion [0-9]+/minSdkVersion 24/g' android/app/build.gradle || true
           sed -i -E 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle || true
           sed -i -E 's/compileSdkVersion [0-9]+/compileSdkVersion 35/g' android/app/build.gradle || true
-          sed -i -E 's/compileSdk flutter.compileSdkVersion/compileSdk 35/g' android/app/build.gradle || true
-          sed -i -E 's/compileSdk [0-9]+/compileSdk 35/g' android/app/build.gradle || true
+          sed -i -E 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 35/g' android/app/build.gradle || true
+          sed -i -E 's/targetSdkVersion [0-9]+/targetSdkVersion 35/g' android/app/build.gradle || true
           
-          # سكربت إضافة الصلاحيات المتقدمة للمانيفست
+          # سكربت حقن الصلاحيات المتقدمة لفتح القفل وتجاوز الوضع الصامت
           cat << 'EOF' > fix_manifest.dart
           import 'dart:io';
           void main() {
