@@ -6,6 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:battery_plus/battery_plus.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:flutter_callkit_incoming/entities/entities.dart';
+import 'package:uuid/uuid.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,8 +42,6 @@ class _SOSHomePageState extends State<SOSHomePage> {
 
   String username = "";
   final TextEditingController _nameController = TextEditingController();
-  bool isAlarmActive = false;
-  String incomingMessage = "";
 
   @override
   void initState() {
@@ -65,6 +66,40 @@ class _SOSHomePageState extends State<SOSHomePage> {
     setState(() => username = name.trim());
   }
 
+  // إظهار شاشة المكالمة (الإنذار)
+  Future<void> _showIncomingCall(String senderName, String message) async {
+    const uuid = Uuid();
+    final callId = uuid.v4();
+
+    final params = CallKitParams(
+      id: callId,
+      nameCaller: '🚨 طوارئ: $senderName',
+      appName: 'Instant SOS',
+      avatar: 'https://cdn-icons-png.flaticon.com/512/1008/1008928.png',
+      handle: 'يطلب المساعدة الفورية!',
+      type: 0,
+      textAccept: 'فتح التطبيق',
+      textDecline: 'إغلاق الصوت',
+      missedCallNotification: const NotificationParams(
+        showNotification: true,
+        isShowCallback: false,
+        subtitle: 'نداء استغاثة لم يتم الرد عليه',
+      ),
+      duration: 30000, // مدة الرنين (30 ثانية)
+      extra: <String, dynamic>{'message': message},
+      android: const AndroidParams(
+        isCustomNotification: true,
+        isShowLogo: false,
+        ringtonePath: 'system_ringtone_default',
+        backgroundColor: '#FF0000',
+        backgroundUrl: 'https://images.unsplash.com/photo-1542281286-9e0a16bb7366',
+        actionColor: '#4CAF50',
+      ),
+    );
+
+    await FlutterCallkitIncoming.showCallkitIncoming(params);
+  }
+
   Future<void> _sendSOS() async {
     if (username.isEmpty) return;
 
@@ -73,7 +108,7 @@ class _SOSHomePageState extends State<SOSHomePage> {
       Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       String mapsLink = "https://maps.google.com/?q=${position.latitude},${position.longitude}";
 
-      String messageDetails = "المستخدم: $username بخطر!\nالبطارية: $batteryLevel%\nالموقع: $mapsLink";
+      String messageDetails = "البطارية: $batteryLevel%\nالموقع: $mapsLink";
 
       String eventData = jsonEncode({"message": messageDetails, "sender": username});
       String body = jsonEncode({"name": "sos-alert", "channels": ["sos-channel"], "data": eventData});
@@ -89,7 +124,7 @@ class _SOSHomePageState extends State<SOSHomePage> {
 
       await http.post(Uri.parse(url), headers: {"Content-Type": "application/json"}, body: body);
       
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال الاستغاثة!')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال الاستغاثة بنجاح!')));
     } catch (e) {
       print("خطأ: $e");
     }
@@ -108,37 +143,14 @@ class _SOSHomePageState extends State<SOSHomePage> {
     if (event.eventName == "sos-alert") {
       final data = jsonDecode(event.data.toString());
       if (data['sender'] != username) {
-        setState(() {
-          isAlarmActive = true;
-          incomingMessage = data['message'];
-        });
+        // تشغيل شاشة المكالمة بدلاً من الشاشة الحمراء العادية
+        _showIncomingCall(data['sender'], data['message']);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isAlarmActive) {
-      return Scaffold(
-        backgroundColor: Colors.red,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.warning, size: 100, color: Colors.white),
-              const SizedBox(height: 20),
-              Text("🚨 حالة طوارئ 🚨\n\n$incomingMessage", textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: () => setState(() => isAlarmActive = false),
-                child: const Text("إخفاء الإنذار", style: TextStyle(fontSize: 18, color: Colors.red)),
-              )
-            ],
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(title: const Text('Instant SOS'), backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
       body: Padding(
