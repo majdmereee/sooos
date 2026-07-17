@@ -20,13 +20,15 @@ jobs:
           flutter-version: '3.19.x'
           channel: 'stable'
 
-      # الضربة القاضية: حذف مجلد الأندرويد القديم وبناؤه من الصفر بشكل سليم
-      - name: Nuke and Rebuild Android Folder (The Ultimate Fix)
+      - name: Nuke and Rebuild Android Folder (The Ultimate Fix + Kotlin Update)
         run: |
           rm -rf android
           flutter create . --platforms=android
           
-          # سكربت صغير لإضافة صلاحيات الموقع والإنترنت تلقائياً
+          # ترقية إصدار الكوتلن ليتوافق مع المكاتب الحديثة
+          sed -i "s/ext.kotlin_version = '[^']*'/ext.kotlin_version = '1.9.22'/g" android/build.gradle
+          
+          # سكربت إضافة الصلاحيات للمانيفست
           cat << 'EOF' > fix_manifest.dart
           import 'dart:io';
           void main() {
@@ -44,15 +46,12 @@ jobs:
           EOF
           dart fix_manifest.dart
 
-      # الآن سيتم جلب المكاتب بنجاح لأن البيئة أصبحت جديدة وتدعم V2
       - name: Install dependencies
         run: flutter pub get
 
-      # بناء التطبيق
       - name: Build APK
         run: flutter build apk --release
 
-      # رفع التطبيق النهائي
       - uses: actions/upload-artifact@v4
         with:
           name: instant-sos-app
