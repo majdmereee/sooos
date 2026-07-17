@@ -59,6 +59,7 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
+        <!-- هذا هو الكود الذي يبحث عنه نظام البناء لحل مشكلة الخطأ -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
