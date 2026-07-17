@@ -29,8 +29,13 @@ jobs:
           sed -i -E 's/id "org.jetbrains.kotlin.android" version "[0-9\.]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/g' android/settings.gradle || true
           sed -i -E "s/ext.kotlin_version = '[^']*'/ext.kotlin_version = '1.9.22'/g" android/build.gradle || true
           
-          # إجبار التطبيق على استخدام إصدار أندرويد متوافق مع شاشة المكالمات (24)
+          # إجبار التطبيق على استخدام إصدار SDK 35 (لحل مشكلة المكالمات) و 24 كحد أدنى
           sed -i -E 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle || true
+          sed -i -E 's/minSdkVersion [0-9]+/minSdkVersion 24/g' android/app/build.gradle || true
+          sed -i -E 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle || true
+          sed -i -E 's/compileSdkVersion [0-9]+/compileSdkVersion 35/g' android/app/build.gradle || true
+          sed -i -E 's/compileSdk flutter.compileSdkVersion/compileSdk 35/g' android/app/build.gradle || true
+          sed -i -E 's/compileSdk [0-9]+/compileSdk 35/g' android/app/build.gradle || true
           
           # سكربت إضافة الصلاحيات المتقدمة للمانيفست
           cat << 'EOF' > fix_manifest.dart
