@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -16,7 +14,6 @@ void main() async {
 
 class InstantSOSApp extends StatelessWidget {
   const InstantSOSApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -30,54 +27,27 @@ class InstantSOSApp extends StatelessWidget {
 
 class SOSHomePage extends StatefulWidget {
   const SOSHomePage({super.key});
-
   @override
   State<SOSHomePage> createState() => _SOSHomePageState();
 }
 
-class _SOSHomePageState extends State<SOSHomePage> with WidgetsBindingObserver {
-  static const platform = MethodChannel('com.example.sos/emergency');
-
+class _SOSHomePageState extends State<SOSHomePage> {
   final String pusherAppId = "2176890";
   final String pusherKey = "163dad2d478fe38aa1cf";
   final String pusherSecret = "81ae586cffe7bf12c117";
   final String pusherCluster = "eu";
 
   String username = "";
-  bool isAccessibilityGranted = false;
   final TextEditingController _nameController = TextEditingController();
-  bool isAlarmTriggered = false;
+  bool isAlarmActive = false;
+  String incomingMessage = "";
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _initUser();
-    _checkPermissions();
     _initPusher();
-    _listenToNativeTriggers();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  // إعادة الفحص عند العودة للتطبيق من الإعدادات
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkPermissions();
-    }
-  }
-
-  void _listenToNativeTriggers() {
-    platform.setMethodCallHandler((call) async {
-      if (call.method == "triggerSOS") {
-        if (!isAlarmTriggered) _sendSOS();
-      }
-    });
+    Geolocator.requestPermission();
   }
 
   Future<void> _initUser() async {
@@ -95,44 +65,18 @@ class _SOSHomePageState extends State<SOSHomePage> with WidgetsBindingObserver {
     setState(() => username = name.trim());
   }
 
-  Future<void> _checkPermissions() async {
-    // استدعاء فحص الصلاحية من نظام أندرويد مباشرة
-    bool granted = await platform.invokeMethod('checkAccessibilityPermission') ?? false;
-    
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      await Geolocator.requestPermission();
-    }
-    
-    setState(() => isAccessibilityGranted = granted);
-  }
-
-  Future<void> _requestPermission() async {
-    // فتح إعدادات الوصول مباشرة
-    await platform.invokeMethod('openAccessibilitySettings');
-  }
-
   Future<void> _sendSOS() async {
     if (username.isEmpty) return;
-    setState(() { isAlarmTriggered = true; });
 
     try {
       int batteryLevel = await Battery().batteryLevel;
       Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       String mapsLink = "https://maps.google.com/?q=${position.latitude},${position.longitude}";
 
-      String messageDetails = "حالة طوارئ!\nالمستخدم: $username بخطر ويحتاج مساعدة فورية!\nالبطارية: $batteryLevel%\nالموقع: $mapsLink";
+      String messageDetails = "المستخدم: $username بخطر!\nالبطارية: $batteryLevel%\nالموقع: $mapsLink";
 
-      String eventData = jsonEncode({
-        "message": messageDetails,
-        "sender": username
-      });
-
-      String body = jsonEncode({
-        "name": "sos-alert",
-        "channels": ["sos-channel"],
-        "data": eventData
-      });
+      String eventData = jsonEncode({"message": messageDetails, "sender": username});
+      String body = jsonEncode({"name": "sos-alert", "channels": ["sos-channel"], "data": eventData});
 
       String bodyMd5 = md5.convert(utf8.encode(body)).toString();
       String timestamp = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
@@ -143,28 +87,18 @@ class _SOSHomePageState extends State<SOSHomePage> with WidgetsBindingObserver {
 
       String url = "https://api-$pusherCluster.pusher.com$path?$queryParams&auth_signature=$signature";
 
-      await http.post(
-        Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
-        body: body,
-      );
+      await http.post(Uri.parse(url), headers: {"Content-Type": "application/json"}, body: body);
+      
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال الاستغاثة!')));
     } catch (e) {
       print("خطأ: $e");
     }
-
-    Future.delayed(const Duration(seconds: 5), () {
-      if(mounted) setState(() { isAlarmTriggered = false; });
-    });
   }
 
   Future<void> _initPusher() async {
     final pusher = PusherChannelsFlutter.getInstance();
     try {
-      await pusher.init(
-        apiKey: pusherKey,
-        cluster: pusherCluster,
-        onEvent: _onPusherEvent,
-      );
+      await pusher.init(apiKey: pusherKey, cluster: pusherCluster, onEvent: _onPusherEvent);
       await pusher.subscribe(channelName: "sos-channel");
       await pusher.connect();
     } catch (e) {}
@@ -174,42 +108,59 @@ class _SOSHomePageState extends State<SOSHomePage> with WidgetsBindingObserver {
     if (event.eventName == "sos-alert") {
       final data = jsonDecode(event.data.toString());
       if (data['sender'] != username) {
-        platform.invokeMethod('showEmergencyScreen', {"message": data['message']});
+        setState(() {
+          isAlarmActive = true;
+          incomingMessage = data['message'];
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isAlarmActive) {
+      return Scaffold(
+        backgroundColor: Colors.red,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.warning, size: 100, color: Colors.white),
+              const SizedBox(height: 20),
+              Text("🚨 حالة طوارئ 🚨\n\n$incomingMessage", textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 40),
+              ElevatedButton(
+                onPressed: () => setState(() => isAlarmActive = false),
+                child: const Text("إخفاء الإنذار", style: TextStyle(fontSize: 18, color: Colors.red)),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Instant SOS'), backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
-                labelText: 'اسم المستخدم',
+                labelText: 'اسم المستخدم الخاص بك',
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(icon: const Icon(Icons.save), onPressed: () => _saveUsername(_nameController.text)),
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 50),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, padding: const EdgeInsets.all(20)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 40)),
               onPressed: _sendSOS,
-              child: const Text('اختبار إرسال استغاثة', style: TextStyle(fontSize: 20)),
+              child: const Text('إرسال نداء استغاثة الآن', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             ),
-            const SizedBox(height: 20),
-            if (!isAccessibilityGranted)
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-                icon: const Icon(Icons.settings),
-                label: const Text('تفعيل صلاحية الأزرار (مطلوب)'),
-                onPressed: _requestPermission,
-              ),
           ],
         ),
       ),
