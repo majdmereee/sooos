@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # مكتبات إدارة الحالة والحفظ المحلي لاسم المستخدم
+  # مكتبات إدارة الحالة والحفظ المحلي
   shared_preferences: ^2.2.2
   
   # مكتبات الاتصال الفوري والبث اللحظي
@@ -21,6 +21,10 @@ dependencies:
   # مكتبات جلب بيانات الطوارئ (الموقع والبطارية)
   geolocator: ^10.1.0      
   battery_plus: ^5.0.3     
+  
+  # المكاتب الجديدة لإظهار شاشة المكالمة والرنين لتخطي القفل
+  flutter_callkit_incoming: ^1.1.2
+  uuid: ^4.3.3
 
 dev_dependencies:
   flutter_test:
