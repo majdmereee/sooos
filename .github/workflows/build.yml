@@ -24,9 +24,10 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # 3. الحل الجذري: حقن ملف AndroidManifest الصحيح إجبارياً قبل البناء
-      - name: Radical Fix - Inject Correct AndroidManifest
+      # 3. الحل الجذري: إنشاء المجلدات أولاً ثم حقن ملف AndroidManifest
+      - name: Radical Fix - Create Folders and Inject Correct AndroidManifest
         run: |
+          mkdir -p android/app/src/main
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.sos">
               <uses-permission android:name="android.permission.INTERNET" />
@@ -104,7 +105,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 5. جلب المكاتب (الآن سيعمل بنجاح دون أخطاء الترقية)
+      # 5. جلب المكاتب (الآن سيعمل بنجاح دون أخطاء)
       - name: Install dependencies
         run: flutter pub get
 
