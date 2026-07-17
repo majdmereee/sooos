@@ -9,16 +9,50 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
+          
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.x'
           channel: 'stable'
-      - run: flutter pub get
-      - run: flutter build apk --release
+
+      # الضربة القاضية: حذف مجلد الأندرويد القديم وبناؤه من الصفر بشكل سليم
+      - name: Nuke and Rebuild Android Folder (The Ultimate Fix)
+        run: |
+          rm -rf android
+          flutter create . --platforms=android
+          
+          # سكربت صغير لإضافة صلاحيات الموقع والإنترنت تلقائياً
+          cat << 'EOF' > fix_manifest.dart
+          import 'dart:io';
+          void main() {
+            var file = File('android/app/src/main/AndroidManifest.xml');
+            var content = file.readAsStringSync();
+            var permissions = '''
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+            ''';
+            content = content.replaceFirst('<application', permissions + '<application');
+            file.writeAsStringSync(content);
+          }
+          EOF
+          dart fix_manifest.dart
+
+      # الآن سيتم جلب المكاتب بنجاح لأن البيئة أصبحت جديدة وتدعم V2
+      - name: Install dependencies
+        run: flutter pub get
+
+      # بناء التطبيق
+      - name: Build APK
+        run: flutter build apk --release
+
+      # رفع التطبيق النهائي
       - uses: actions/upload-artifact@v4
         with:
           name: instant-sos-app
