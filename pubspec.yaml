@@ -10,10 +10,15 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # مكتبات إدارة الحالة والحفظ المحلي لاسم المستخدم
   shared_preferences: ^2.2.2
+  
+  # مكتبات الاتصال الفوري والبث اللحظي
   pusher_channels_flutter: ^2.2.0
   http: ^1.1.2
   crypto: ^3.0.3
+  
+  # مكتبات جلب بيانات الطوارئ (الموقع والبطارية)
   geolocator: ^10.1.0      
   battery_plus: ^5.0.3     
 
