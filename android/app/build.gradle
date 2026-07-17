@@ -59,7 +59,3 @@ android {
 flutter {
     source '../..'
 }
-
-dependencies {
-    // تم حذف السطر القديم لمنع التعارض وترك إدارة المكاتب لـ Flutter
-}
