@@ -66,7 +66,7 @@ class _SOSHomePageState extends State<SOSHomePage> {
     setState(() => username = name.trim());
   }
 
-  // إظهار شاشة المكالمة (الإنذار)
+  // إظهار شاشة المكالمة (الإنذار) - تم تصحيح مكان النصوص هنا
   Future<void> _showIncomingCall(String senderName, String message) async {
     const uuid = Uuid();
     final callId = uuid.v4();
@@ -78,14 +78,12 @@ class _SOSHomePageState extends State<SOSHomePage> {
       avatar: 'https://cdn-icons-png.flaticon.com/512/1008/1008928.png',
       handle: 'يطلب المساعدة الفورية!',
       type: 0,
-      textAccept: 'فتح التطبيق',
-      textDecline: 'إغلاق الصوت',
       missedCallNotification: const NotificationParams(
         showNotification: true,
         isShowCallback: false,
         subtitle: 'نداء استغاثة لم يتم الرد عليه',
       ),
-      duration: 30000, // مدة الرنين (30 ثانية)
+      duration: 30000,
       extra: <String, dynamic>{'message': message},
       android: const AndroidParams(
         isCustomNotification: true,
@@ -94,6 +92,8 @@ class _SOSHomePageState extends State<SOSHomePage> {
         backgroundColor: '#FF0000',
         backgroundUrl: 'https://images.unsplash.com/photo-1542281286-9e0a16bb7366',
         actionColor: '#4CAF50',
+        textAccept: 'فتح التطبيق', // تم النقل هنا حسب التحديث الجديد للمكتبة
+        textDecline: 'إغلاق الصوت', // تم النقل هنا
       ),
     );
 
@@ -143,7 +143,6 @@ class _SOSHomePageState extends State<SOSHomePage> {
     if (event.eventName == "sos-alert") {
       final data = jsonDecode(event.data.toString());
       if (data['sender'] != username) {
-        // تشغيل شاشة المكالمة بدلاً من الشاشة الحمراء العادية
         _showIncomingCall(data['sender'], data['message']);
       }
     }
