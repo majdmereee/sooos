@@ -25,7 +25,7 @@ jobs:
           rm -rf android
           flutter create . --platforms=android
           
-          # التحديث الجذري: إجبار تغيير إصدار الكوتلن في قوالب فلاتر الجديدة (settings.gradle) والقديمة
+          # التحديث الجذري: إجبار تغيير إصدار الكوتلن في قوالب فلاتر الجديدة والقديمة
           sed -i -E 's/id "org.jetbrains.kotlin.android" version "[0-9\.]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/g' android/settings.gradle || true
           sed -i -E "s/ext.kotlin_version = '[^']*'/ext.kotlin_version = '1.9.22'/g" android/build.gradle || true
           
